@@ -22,7 +22,8 @@ Class ShipNSailors Extends App
 	Field attacks:List<Position> = New List<Position>()
 	
 	Field attack_img:Image 
-	Field move_img:Image 
+	Field move_img:Image
+	Field can_select_img:Image 
 	
 	Field attack_tiles:List<Tile> = New List<Tile>()
 	Field move_tiles:List<Tile> = New List<Tile>()
@@ -39,6 +40,7 @@ Class ShipNSailors Extends App
 		
 		attack_img = LoadImage("ATTACK_TILE.png")
 		move_img = LoadImage("MOVE_TILE.png")
+		can_select_img = LoadImage("CAN_SELECT.png")
 		' build tile list
 		Local tile_list:List<Tile> = New List<Tile>()
 		Local grass_tile:Image = LoadImage("GRASS_TILE.png")
@@ -79,16 +81,8 @@ Class ShipNSailors Extends App
 	End
 	
 	Method OnUpdate()
-		For Local some_unit:Unit = Eachin opponent_army
-			If some_unit.IsDead()
-				opponent_army.Remove(some_unit)
-			End
-		End
-		For Local some_unit:Unit = Eachin player_army
-			If some_unit.IsDead()
-				player_army.Remove(some_unit)
-			End
-		End
+		RemoveDead()
+		
 		Local current_army:List<Unit>
 		Local enemy_army:List<Unit>
 		If player_turn = 0
@@ -129,9 +123,15 @@ Class ShipNSailors Extends App
 		game_map.Draw()
 		For Local o_unit:Unit = Eachin opponent_army
 			o_unit.Draw()
+			If player_turn = 1 And o_unit.moved = 0
+				DrawImage(can_select_img, o_unit.pos.x, o_unit.pos.y)
+			End
 		End
 		For Local p_unit:Unit = Eachin player_army
 			p_unit.Draw()
+			If player_turn = 0 And p_unit.moved = 0
+				DrawImage(can_select_img, p_unit.pos.x, p_unit.pos.y)
+			End
 		End
 		end_button.Draw()
 		Select game_state
@@ -153,7 +153,7 @@ Class ShipNSailors Extends App
 
 	Method ChooseUnit(current_army:List<Unit>) 
 		For Local some_unit:Unit = Eachin current_army
-			If (some_unit.Clicked(TouchX(0), TouchY(0)))
+			If (some_unit.Clicked(TouchX(0), TouchY(0)) And some_unit.moved = 0)
 				active_unit = some_unit
 				Print active_unit.name
 				game_state = STATE_MOVING
@@ -192,7 +192,7 @@ Class ShipNSailors Extends App
 						enemy.Damaged(active_unit.Attack())
 					End
 				End
-				game_state = STATE_END
+				game_state = STATE_UNIT_SELECT
 			End
 		End
 	End
@@ -227,11 +227,30 @@ Class ShipNSailors Extends App
 		End
 	End
 	
+	Method RemoveDead()
+		For Local some_unit:Unit = Eachin opponent_army
+			If some_unit.IsDead()
+				opponent_army.Remove(some_unit)
+			End
+		End
+		For Local some_unit:Unit = Eachin player_army
+			If some_unit.IsDead()
+				player_army.Remove(some_unit)
+			End
+		End
+	End
+	
 	Method EndTurn()
 		If (player_turn = 0)
 			player_turn = 1
+			For Local some_unit:Unit = Eachin opponent_army
+				some_unit.moved = 0
+			End
 		Else
 			player_turn = 0
+			For Local some_unit:Unit = Eachin player_army
+				some_unit.moved = 0
+			End
 		End
 		Print "Current Player: " + player_turn + " "
 		end_button = New Tile(490, 360, end_img.GrabImage(0, 48 * player_turn, 108, 48), 108, 48)

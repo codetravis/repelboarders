@@ -40,12 +40,14 @@ Class Unit
 	Field id:Int
 	Field pos:Position
 	Field unit_stats:Stats
+	Field moved:Int
 	
 	Method New(id:Int, name:String, x:Float, y:Float, u_stats:Stats)
 		' Use type to load the attributes
 		Self.name = name
 		Self.pos = New Position(x, y)
 		Self.unit_stats = u_stats
+		Self.moved = 0
 	End
 	
 	Method Draw()
@@ -58,6 +60,7 @@ Class Unit
 	
 	Method Move(pos:Position)
 		Self.pos = pos
+		Self.moved = 1
 	End
 	
 	Method Clicked:Bool(x:Float, y:Float)
