@@ -51,11 +51,19 @@ Class Unit
 	End
 	
 	Method Draw()
-		DrawImage(unit_stats.img, pos.x, pos.y, 0.0, 0.48, 0.48)
+		DrawImage(unit_stats.img, pos.x, pos.y, 0.0, 1.0, 1.0)
+		SetColor(0, 255, 0)
+		DrawRect(pos.x + 2, pos.y + 44, (40 * Float(unit_stats.health)/Float(unit_stats.max_health)), 2)
+		SetColor(255, 255, 255)
 	End
 	
 	Method DrawActive(x:Float, y:Float)
-		DrawImage(unit_stats.img, x, y, 0.0, 0.48, 0.48)
+		DrawImage(unit_stats.img, x, y, 0.0, 1.0, 1.0)
+		DrawText(name, x, y + 50)
+		DrawText("HP: " + unit_stats.health + "/" + unit_stats.max_health, x, y + 60)
+		DrawText("Attack: " + unit_stats.attack, x, y + 70)
+		DrawText("Range: " + unit_stats.range, x, y + 80)
+		DrawText("Speed: " + unit_stats.speed, x, y + 90)
 	End
 	
 	Method Move(pos:Position)
@@ -94,7 +102,7 @@ Class Unit
 		If (unit_stats.range > 0 And unit_stats.attack > 0)
 			For Local i:Int = 0 Until unit_stats.range + 1
 				For Local j:Int = 0 Until unit_stats.range + 1
-					If (((i > 0) Or (j > 0)) And (i + j <= unit_stats.speed))
+					If (((i > 0) Or (j > 0)) And (i + j <= unit_stats.range))
 						attacks.AddLast(New Position(pos.x + i * TILE_W, pos.y + j * TILE_H))
 						attacks.AddLast(New Position(pos.x - i * TILE_W, pos.y + j * TILE_H))
 						attacks.AddLast(New Position(pos.x + i * TILE_W, pos.y - j * TILE_H))
@@ -117,14 +125,12 @@ Class Unit
 	End
 	
 	Method Attack:Int()
-		Print Self.name + " did " + unit_stats.attack + " damage"
 		Return unit_stats.attack
 	End
 	
 	Method Damaged:Int(damage:Int)
-		Print " to " + Self.name
 		unit_stats.health = unit_stats.health - damage
-		Print "Health is " + unit_stats.health
+		Return unit_stats.health
 	End
 	
 	Method IsDead:Bool()
@@ -134,12 +140,20 @@ Class Unit
 			Return False
 		End
 	End
+	
+	Method LevelUp()
+		unit_stats.level += 1
+		unit_stats.max_health += unit_stats.level
+		unit_stats.health = unit_stats.max_health
+		unit_stats.attack += (unit_stats.level/2)
+	End
 
 End
 
 Class Stats
 	Field type:String
 	Field health:Int
+	Field max_health:Int
 	Field attack:Int
 	Field range:Int
 	Field speed:Int
@@ -150,6 +164,7 @@ Class Stats
 	Method New(type:String, health:Int, attack:Int, range:Int, speed:Int, img:Image, level:Int = 0, experience:Int = 0)
 		Self.type = type
 		Self.health = health + level
+		Self.max_health = health + level 
 		Self.attack = attack + (level/2)
 		Self.range = range
 		Self.speed = speed

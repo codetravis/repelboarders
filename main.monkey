@@ -6,6 +6,7 @@ Const STATE_MOVING:Int = 2
 Const STATE_ATTACKING:Int = 3
 Const STATE_END:Int = 4
 Const STATE_UNIT_SELECT:Int = 5
+Const STATE_FINISHED:Int = 6
 
 Const STATE_ALIVE:Int = 0
 Const STATE_DEAD:Int = 1
@@ -23,7 +24,8 @@ Class ShipNSailors Extends App
 	
 	Field attack_img:Image 
 	Field move_img:Image
-	Field can_select_img:Image 
+	Field can_select_img:Image
+	Field finish_flags:Image
 	
 	Field attack_tiles:List<Tile> = New List<Tile>()
 	Field move_tiles:List<Tile> = New List<Tile>()
@@ -38,21 +40,23 @@ Class ShipNSailors Extends App
 		Print "Creating Game"
 		SetUpdateRate(15)
 		
+		finish_flags = LoadImage("FINISH_FLAGS.png")
+		
 		attack_img = LoadImage("ATTACK_TILE.png")
 		move_img = LoadImage("MOVE_TILE.png")
 		can_select_img = LoadImage("CAN_SELECT.png")
 		' build tile list
 		Local tile_list:List<Tile> = New List<Tile>()
-		Local grass_tile:Image = LoadImage("GRASS_TILE.png")
-		Local flower_tile:Image = LoadImage("GRASS2_TILE.png")
+		Local deck_tile:Image = LoadImage("DECK_TILE.png")
+		Local cannon_tile:Image = LoadImage("CANNON_DECK_TILE.png")
 		
 		For Local i:Int = 0 Until MAP_H
 			For Local j:Int = 0 Until MAP_W
 				'Print i + " " + j + " adding image"
-				If (i = 7 And j = 3) Or (i = 3 And j = 7)
-					tile_list.AddLast(New Tile(j * TILE_W, i * TILE_H, flower_tile))
+				If (j = 0 And (i Mod 3) = 0)
+					tile_list.AddLast(New Tile(j * TILE_W, i * TILE_H, cannon_tile))
 				Else
-					tile_list.AddLast(New Tile(j * TILE_W, i * TILE_H, grass_tile))
+					tile_list.AddLast(New Tile(j * TILE_W, i * TILE_H, deck_tile))
 				End
 			End
 		End
@@ -60,16 +64,18 @@ Class ShipNSailors Extends App
 		game_map = New TileMap(MAP_W, MAP_H, tile_list)
 		
 		' Build unit list 
-		Local peasant_img:Image = LoadImage("PEASANT.png")
-		Local spearman_img:Image = LoadImage("SPEARMAN.png")
+		Local marine_img:Image = LoadImage("RED_MARINE.png")
+		Local pirate_img:Image = LoadImage("BLUE_PIRATE.png")
+		Local sailor_img:Image = LoadImage("RED_SAILOR.png")
+		Local bucaneer_img:Image = LoadImage("BLUE_BUCANEER.png")
 		
 		For Local m:Int = 2 Until 7
 			If (m Mod 2 = 0)
-				player_army.AddLast(New Unit(m, "peasant", m * TILE_W, MAP_H * TILE_H - 48, New Stats("Peasant", 7, 1, 1, 3, peasant_img)))
-				opponent_army.AddLast(New Unit(m, "peasant", m * TILE_W, 0, New Stats("Peasant", 7, 1, 1, 3, peasant_img)))
+				player_army.AddLast(New Unit(m, "pirate", m * TILE_W, MAP_H * TILE_H - 48, New Stats("Pirate", 6, 5, 1, 3, pirate_img)))
+				opponent_army.AddLast(New Unit(m, "sailor", m * TILE_W, 0, New Stats("Sailor", 8, 2, 1, 3, sailor_img)))
 			Else
-				player_army.AddLast(New Unit(m, "spearman", m * TILE_W, MAP_H * TILE_H - 48, New Stats("Spearman", 10, 3, 2, 2, spearman_img)))
-				opponent_army.AddLast(New Unit(m, "spearman", m * TILE_W, 0, New Stats("Spearman", 10, 3, 2, 2, spearman_img)))
+				player_army.AddLast(New Unit(m, "bucaneer", m * TILE_W, MAP_H * TILE_H - 48, New Stats("Bucaneer", 10, 4, 2, 2, bucaneer_img)))
+				opponent_army.AddLast(New Unit(m, "marine", m * TILE_W, 0, New Stats("Marine", 10, 3, 3, 2, marine_img)))
 			End
 		End
 		
@@ -114,6 +120,10 @@ Class ShipNSailors Extends App
 				EndTurn()
 			End
 		End
+		
+		If player_army.Count() = 0 Or opponent_army.Count() = 0
+			game_state = STATE_FINISHED
+		End
 	End
 	
 	Method OnRender()
@@ -133,7 +143,9 @@ Class ShipNSailors Extends App
 				DrawImage(can_select_img, p_unit.pos.x, p_unit.pos.y)
 			End
 		End
-		end_button.Draw()
+		If game_state <> STATE_FINISHED
+			end_button.Draw()
+		End
 		Select game_state
 			Case STATE_MOVING
 				active_unit.DrawActive(490, 50)
@@ -145,6 +157,10 @@ Class ShipNSailors Extends App
 				For Local attack:Tile = Eachin attack_tiles
 					attack.Draw()
 				End
+			Case STATE_FINISHED
+				DrawImage(finish_flags.GrabImage(84 * player_turn, 0, 84, 156), 180, 100)
+				DrawText("Finished Game", 220, 25)
+			
 		End
 		
 		
@@ -189,7 +205,10 @@ Class ShipNSailors Extends App
 			If (attack.Clicked(TouchX(0), TouchY(0)) And game_state = STATE_ATTACKING)
 				For Local enemy:Unit = Eachin enemy_army
 					If attack.pos.Same(enemy.pos)
-						enemy.Damaged(active_unit.Attack())
+						Local enemy_hp:Int = enemy.Damaged(active_unit.Attack())
+						If (enemy_hp <= 0)
+							active_unit.LevelUp()
+						End
 					End
 				End
 				game_state = STATE_UNIT_SELECT
