@@ -41,6 +41,8 @@ Class Unit
 	Field pos:Position
 	Field unit_stats:Stats
 	Field moved:Int
+	Field armament:List<Weapon>
+	Field protection:List<Armor>
 	
 	Method New(id:Int, name:String, x:Float, y:Float, u_stats:Stats)
 		' Use type to load the attributes
@@ -48,6 +50,8 @@ Class Unit
 		Self.pos = New Position(x, y)
 		Self.unit_stats = u_stats
 		Self.moved = 0
+		Self.armament = New List<Weapon>()
+		Self.protection = New List<Armor>()
 	End
 	
 	Method Draw()
@@ -64,6 +68,14 @@ Class Unit
 		DrawText("Attack: " + unit_stats.attack, x, y + 70)
 		DrawText("Range: " + unit_stats.range, x, y + 80)
 		DrawText("Speed: " + unit_stats.speed, x, y + 90)
+		
+		Local height:Int = 110
+		For Local weap:Weapon = Eachin armament
+			If weap.uses > 0
+				weap.use_tile = New Tile (x, y + height, weap.img)
+				weap.Draw()
+			End
+		End
 	End
 	
 	Method Move(pos:Position)
@@ -96,34 +108,6 @@ Class Unit
 		Return moves
 	End
 	
-	Method FindAttacks:List<Position>(friendlies:List<Unit>)
-		Local attacks:List<Position> = New List<Position>()
-		' Find all possible attacks
-		If (unit_stats.range > 0 And unit_stats.attack > 0)
-			For Local i:Int = 0 Until unit_stats.range + 1
-				For Local j:Int = 0 Until unit_stats.range + 1
-					If (((i > 0) Or (j > 0)) And (i + j <= unit_stats.range))
-						attacks.AddLast(New Position(pos.x + i * TILE_W, pos.y + j * TILE_H))
-						attacks.AddLast(New Position(pos.x - i * TILE_W, pos.y + j * TILE_H))
-						attacks.AddLast(New Position(pos.x + i * TILE_W, pos.y - j * TILE_H))
-						attacks.AddLast(New Position(pos.x - i * TILE_W, pos.y - j * TILE_H))
-					End
-				End
-			End
-		End
-		' Filter out attacks that would hit friendly units if we are doing damage
-		If (unit_stats.attack > 0)
-			For Local friend:Unit = Eachin friendlies
-				For Local attack:Position = Eachin attacks
-					If (attack.Same(friend.pos))
-						attacks.Remove(attack)
-					End
-				End
-			End
-		End
-		Return attacks
-	End
-	
 	Method Attack:Int()
 		Return unit_stats.attack
 	End
@@ -144,7 +128,7 @@ Class Unit
 	Method LevelUp()
 		unit_stats.level += 1
 		unit_stats.max_health += unit_stats.level
-		unit_stats.health = unit_stats.max_health
+		unit_stats.health = Min(unit_stats.max_health, unit_stats.health + 3)
 		unit_stats.attack += (unit_stats.level/2)
 	End
 
@@ -175,6 +159,86 @@ Class Stats
 	
 End
 
+Class Armor
+	Field name:String
+	Field type:String
+	Field value:Int
+	Field health:Int
+	
+	Method New(name:String, type:String, value:String, health:Int)
+		Self.name = name
+		Self.type = type
+		Self.value = value
+		Self.health = health
+	End
+	
+End
+
+Class Weapon
+	Field name:String
+	Field type:String
+	Field value:Int
+	Field handed:Int
+	Field damage:Int
+	Field uses:Int
+	Field loaded:Int
+	Field close_range:Int
+	Field long_range:Int
+	Field img:Image
+	Field use_tile:Tile
+
+	Method New(name:String, type:String, img:Image, value:Int, handed:Int, damage:Int, close_range:Int, long_range:Int)
+		Self.name = name
+		Self.type = type
+		Self.img = img
+		Self.value = value
+		Self.handed = handed
+		Self.damage = damage
+		Self.uses = 1
+		Self.close_range = close_range
+		Self.long_range = long_range
+	End
+	
+	Method Draw()
+		Self.use_tile.Draw()
+	End
+	
+	Method FindAttacks:List<Position>(pos:Position, friendlies:List<Unit>)
+		Local attacks:List<Position> = New List<Position>()
+		' Find all possible attacks
+		For Local i:Int = close_range Until long_range + 1
+			For Local j:Int = close_range Until long_range + 1
+				If (((i > 0) Or (j > 0)) And (i + j <= long_range) And (i + j >= close_range))
+					attacks.AddLast(New Position(pos.x + i * TILE_W, pos.y + j * TILE_H))
+					attacks.AddLast(New Position(pos.x - i * TILE_W, pos.y + j * TILE_H))
+					attacks.AddLast(New Position(pos.x + i * TILE_W, pos.y - j * TILE_H))
+					attacks.AddLast(New Position(pos.x - i * TILE_W, pos.y - j * TILE_H))
+				End
+			End
+		End
+		' Filter out attacks that would hit friendly units if we are doing damage
+		If (unit_stats.attack > 0)
+			For Local friend:Unit = Eachin friendlies
+				For Local attack:Position = Eachin attacks
+					If (attack.Same(friend.pos))
+						attacks.Remove(attack)
+					End
+				End
+			End
+		End
+		Return attacks
+	End
+	
+	Method Use()
+		Self.uses = 0
+		Return Self.damage
+	End
+	
+	Method Reset()
+		Self.uses = 1
+	End
+	
+End
 
 Class TileMap
 	Field width:Int

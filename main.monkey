@@ -1,10 +1,10 @@
 Import shipsnsailors
 
 Const STATE_MENU:Int = 0
-Const STATE_WAITING:Int = 1
+Const STATE_CAMPAIGN:Int = 1
 Const STATE_MOVING:Int = 2
 Const STATE_ATTACKING:Int = 3
-Const STATE_END:Int = 4
+Const STATE_BUILD:Int = 4
 Const STATE_UNIT_SELECT:Int = 5
 Const STATE_FINISHED:Int = 6
 
@@ -12,9 +12,9 @@ Const STATE_ALIVE:Int = 0
 Const STATE_DEAD:Int = 1
 
 
-Class ShipNSailors Extends App
+Class RepelBoarders Extends App
 
-	Field game_state:Int = STATE_UNIT_SELECT
+	Field game_state:Int = STATE_MENU
 	Field game_map:TileMap
 	Field player_army:List<Unit> = New List<Unit>()
 	Field opponent_army:List<Unit> = New List<Unit>()
@@ -22,9 +22,15 @@ Class ShipNSailors Extends App
 	Field moves:List<Position> = New List<Position>()
 	Field attacks:List<Position> = New List<Position>()
 	
+	' Selection Box images
 	Field attack_img:Image 
 	Field move_img:Image
 	Field can_select_img:Image
+	' Title and finish screen images
+	Field title_screen:Image
+	Field title_header:Image
+	Field fight_img:Image
+	Field fight_button:Tile
 	Field finish_flags:Image
 	
 	Field attack_tiles:List<Tile> = New List<Tile>()
@@ -40,15 +46,20 @@ Class ShipNSailors Extends App
 		Print "Creating Game"
 		SetUpdateRate(15)
 		
-		finish_flags = LoadImage("FINISH_FLAGS.png")
+		title_screen = LoadImage("images/TITLE_SCREEN.png")
+		title_header = LoadImage("images/TITLE_HEADER.png")
+		fight_img = LoadImage("images/FIGHT_BUTTON.png")
+		' create the begin "FIGHT" button
+		fight_button = New Tile(200, 380, fight_img, 240, 80)
+		finish_flags = LoadImage("images/FINISH_FLAGS.png")
 		
-		attack_img = LoadImage("ATTACK_TILE.png")
-		move_img = LoadImage("MOVE_TILE.png")
-		can_select_img = LoadImage("CAN_SELECT.png")
+		attack_img = LoadImage("images/ATTACK_TILE.png")
+		move_img = LoadImage("images/MOVE_TILE.png")
+		can_select_img = LoadImage("images/CAN_SELECT.png")
 		' build tile list
 		Local tile_list:List<Tile> = New List<Tile>()
-		Local deck_tile:Image = LoadImage("DECK_TILE.png")
-		Local cannon_tile:Image = LoadImage("CANNON_DECK_TILE.png")
+		Local deck_tile:Image = LoadImage("images/DARK_DECK.png")
+		Local cannon_tile:Image = LoadImage("images/CANNON_DECK_TILE.png")
 		
 		For Local i:Int = 0 Until MAP_H
 			For Local j:Int = 0 Until MAP_W
@@ -64,10 +75,11 @@ Class ShipNSailors Extends App
 		game_map = New TileMap(MAP_W, MAP_H, tile_list)
 		
 		' Build unit list 
-		Local marine_img:Image = LoadImage("RED_MARINE.png")
-		Local pirate_img:Image = LoadImage("BLUE_PIRATE.png")
-		Local sailor_img:Image = LoadImage("RED_SAILOR.png")
-		Local bucaneer_img:Image = LoadImage("BLUE_BUCANEER.png")
+		Local marine_img:Image = LoadImage("images/RED_MARINE.png")
+		Local pirate_img:Image = LoadImage("images/BLUE_PIRATE.png")
+		Local sailor_img:Image = LoadImage("images/RED_SAILOR.png")
+		Local bucaneer_img:Image = LoadImage("images/BLUE_BUCANEER.png")
+		
 		
 		For Local m:Int = 2 Until 7
 			If (m Mod 2 = 0)
@@ -79,8 +91,8 @@ Class ShipNSailors Extends App
 			End
 		End
 		
-		' Create the end button
-		end_img = LoadImage("END_TURN.png")
+		' Create the end turn button
+		end_img = LoadImage("images/END_TURN.png")
 		end_button = New Tile(490, 360, end_img.GrabImage(0, 48 * player_turn, 108, 48), 108, 48)
 		' set our first player to go first
 		player_turn = 0
@@ -100,6 +112,12 @@ Class ShipNSailors Extends App
 		End
 		
 		Select game_state
+			Case STATE_MENU
+				If (TouchDown(0) And fight_button.Clicked(TouchX(0), TouchY(0)))
+					game_state = STATE_UNIT_SELECT
+				End
+			Case STATE_CAMPAIGN
+			
 			Case STATE_UNIT_SELECT
 				If (TouchDown(0))
 					ChooseUnit(current_army)
@@ -115,7 +133,7 @@ Class ShipNSailors Extends App
 		End
 		' End Turn at any time
 		If (TouchDown(0))
-			If (end_button.Clicked(TouchX(0), TouchY(0)) And (Millisecs() - last_end > 1000))
+			If (TouchDown(0) And end_button.Clicked(TouchX(0), TouchY(0)) And (Millisecs() - last_end > 1000))
 				last_end = Millisecs()
 				EndTurn()
 			End
@@ -130,40 +148,45 @@ Class ShipNSailors Extends App
 		Cls(128, 128, 128)
 		'Print "clear screen"
 		PushMatrix()
-		game_map.Draw()
-		For Local o_unit:Unit = Eachin opponent_army
-			o_unit.Draw()
-			If player_turn = 1 And o_unit.moved = 0
-				DrawImage(can_select_img, o_unit.pos.x, o_unit.pos.y)
-			End
-		End
-		For Local p_unit:Unit = Eachin player_army
-			p_unit.Draw()
-			If player_turn = 0 And p_unit.moved = 0
-				DrawImage(can_select_img, p_unit.pos.x, p_unit.pos.y)
-			End
-		End
-		If game_state <> STATE_FINISHED
-			end_button.Draw()
-		End
-		Select game_state
-			Case STATE_MOVING
-				active_unit.DrawActive(490, 50)
-				For Local move:Tile = Eachin move_tiles
-					move.Draw()
+		If game_state = STATE_MENU
+			DrawImage(title_screen, 56, 426, 90.0, 1.0, 1.0)
+			DrawImage(title_header, 104, 10)
+			fight_button.Draw()
+		Else
+			game_map.Draw()
+			For Local o_unit:Unit = Eachin opponent_army
+				o_unit.Draw()
+				If player_turn = 1 And o_unit.moved = 0
+					DrawImage(can_select_img, o_unit.pos.x, o_unit.pos.y)
 				End
-			Case STATE_ATTACKING
-				active_unit.DrawActive(490, 50)
-				For Local attack:Tile = Eachin attack_tiles
-					attack.Draw()
+			End
+			For Local p_unit:Unit = Eachin player_army
+				p_unit.Draw()
+				If player_turn = 0 And p_unit.moved = 0
+					DrawImage(can_select_img, p_unit.pos.x, p_unit.pos.y)
 				End
-			Case STATE_FINISHED
-				DrawImage(finish_flags.GrabImage(84 * player_turn, 0, 84, 156), 180, 100)
-				DrawText("Finished Game", 220, 25)
+			End
+			If game_state <> STATE_FINISHED
+				end_button.Draw()
+			End
+			Select game_state
+				Case STATE_MOVING
+					active_unit.DrawActive(490, 50)
+					For Local move:Tile = Eachin move_tiles
+						move.Draw()
+					End
+				Case STATE_ATTACKING
+					active_unit.DrawActive(490, 50)
+					For Local attack:Tile = Eachin attack_tiles
+						attack.Draw()
+					End
+				Case STATE_FINISHED
+					DrawImage(finish_flags.GrabImage(84 * player_turn, 0, 84, 156), 180, 100)
+					DrawText("Finished Game", 220, 25)
+				
+			End
 			
-		End
-		
-		
+		End			
 		PopMatrix()
 	End
 
@@ -279,8 +302,18 @@ Class ShipNSailors Extends App
 End
 
 
+' This is an extension to the base game of repel boarders that
+' allows the loading of campaign files and puts in a 
+' armory/barracks for players to build their crew with
+
+' Read in a file containing an army
+
+' Display all units with their values
+
+' Display all weapons with their values
+
 Function Main()
-	New ShipNSailors()
+	New RepelBoarders()
 End
 
 
