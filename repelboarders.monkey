@@ -74,6 +74,7 @@ Class Unit
 			If weap.uses > 0
 				weap.use_tile = New Tile (x, y + height, weap.img)
 				weap.Draw()
+				height += 50
 			End
 		End
 	End
@@ -217,7 +218,7 @@ Class Weapon
 			End
 		End
 		' Filter out attacks that would hit friendly units if we are doing damage
-		If (unit_stats.attack > 0)
+		If (damage > 0)
 			For Local friend:Unit = Eachin friendlies
 				For Local attack:Position = Eachin attacks
 					If (attack.Same(friend.pos))

@@ -1,4 +1,4 @@
-Import shipsnsailors
+Import repelboarders
 
 Const STATE_MENU:Int = 0
 Const STATE_CAMPAIGN:Int = 1
@@ -7,6 +7,7 @@ Const STATE_ATTACKING:Int = 3
 Const STATE_BUILD:Int = 4
 Const STATE_UNIT_SELECT:Int = 5
 Const STATE_FINISHED:Int = 6
+Const STATE_WEAPONS:Int = 7
 
 Const STATE_ALIVE:Int = 0
 Const STATE_DEAD:Int = 1
@@ -79,15 +80,26 @@ Class RepelBoarders Extends App
 		Local pirate_img:Image = LoadImage("images/BLUE_PIRATE.png")
 		Local sailor_img:Image = LoadImage("images/RED_SAILOR.png")
 		Local bucaneer_img:Image = LoadImage("images/BLUE_BUCANEER.png")
-		
+		Local sabre_img:Image = LoadImage("images/SABRE.png")
+		Local pistol_img:Image = LoadImage("images/PISTOL.png")
+		Local musket_img:Image = LoadImage("images/MUSKET.png")
 		
 		For Local m:Int = 2 Until 7
 			If (m Mod 2 = 0)
-				player_army.AddLast(New Unit(m, "pirate", m * TILE_W, MAP_H * TILE_H - 48, New Stats("Pirate", 6, 5, 1, 3, pirate_img)))
-				opponent_army.AddLast(New Unit(m, "sailor", m * TILE_W, 0, New Stats("Sailor", 8, 2, 1, 3, sailor_img)))
+				Local p_unit:Unit = New Unit(m, "pirate", m * TILE_W, MAP_H * TILE_H - 48, New Stats("Pirate", 6, 5, 1, 3, pirate_img))
+				Local o_unit:Unit = New Unit(m, "sailor", m * TILE_W, 0, New Stats("Sailor", 8, 2, 1, 3, sailor_img))
+				p_unit.armament.AddLast(New Weapon("Sabre", "Sword", sabre_img, 5, 1, 4, 0, 1))
+				o_unit.armament.AddLast(New Weapon("Sabre", "Sword", sabre_img, 5, 1, 4, 0, 1))
+				player_army.AddLast(p_unit)
+				opponent_army.AddLast(o_unit)
 			Else
-				player_army.AddLast(New Unit(m, "bucaneer", m * TILE_W, MAP_H * TILE_H - 48, New Stats("Bucaneer", 10, 4, 2, 2, bucaneer_img)))
-				opponent_army.AddLast(New Unit(m, "marine", m * TILE_W, 0, New Stats("Marine", 10, 3, 3, 2, marine_img)))
+				Local p_unit:Unit = New Unit(m, "bucaneer", m * TILE_W, MAP_H * TILE_H - 48, New Stats("Bucaneer", 10, 4, 2, 2, bucaneer_img))
+				Local o_unit:Unit = New Unit(m, "marine", m * TILE_W, 0, New Stats("Marine", 10, 3, 3, 2, marine_img))
+				p_unit.armament.AddLast(New Weapon("Sabre", "Sword", sabre_img, 5, 1, 4, 0, 1))
+				p_unit.armament.AddLast(New Weapon("Pistol", "Pistol", pistol_img, 5, 1, 2, 0, 2))
+				o_unit.armament.AddLast(New Weapon("Musket", "Musket", musket_img, 7, 2, 3, 0, 3))
+				player_army.AddLast(p_unit)
+				opponent_army.AddLast(o_unit)
 			End
 		End
 		
@@ -125,6 +137,10 @@ Class RepelBoarders Extends App
 			Case STATE_MOVING
 				If (TouchDown(0))
 					ChooseMove(current_army)
+				End
+			Case STATE_WEAPONS
+				If (TouchDown(0))
+					ChooseWeapon(current_army)
 				End
 			Case STATE_ATTACKING
 				If (TouchDown(0))
@@ -175,6 +191,8 @@ Class RepelBoarders Extends App
 					For Local move:Tile = Eachin move_tiles
 						move.Draw()
 					End
+				Case STATE_WEAPONS
+					active_unit.DrawActive(490, 50)
 				Case STATE_ATTACKING
 					active_unit.DrawActive(490, 50)
 					For Local attack:Tile = Eachin attack_tiles
@@ -211,14 +229,8 @@ Class RepelBoarders Extends App
 		For Local move:Tile = Eachin move_tiles
 			If (move.Clicked(TouchX(0), TouchY(0)))
 				active_unit.Move(move.pos)
-				game_state = STATE_ATTACKING
-				Print "State changed to attacking"
-				attacks = active_unit.FindAttacks(current_army)
-				FilterAttacks()
-				attack_tiles = New List<Tile>()
-				For Local attack:Position = Eachin attacks
-					attack_tiles.AddLast(New Tile(attack.x, attack.y, attack_img))
-				End
+				game_state = STATE_WEAPONS
+				Print "State changed to weapons"
 			End
 		End
 	End
@@ -235,6 +247,22 @@ Class RepelBoarders Extends App
 					End
 				End
 				game_state = STATE_UNIT_SELECT
+				Print "State changed to unit select"
+			End
+		End
+	End
+	
+	Method ChooseWeapon(current_army:List<Unit>)
+		For Local weap:Weapon = Eachin active_unit.armament
+			If (weap.use_tile.Clicked(TouchX(0), TouchY(0)) And game_state = STATE_WEAPONS)
+				attacks = weap.FindAttacks(active_unit.pos, current_army)
+				FilterAttacks()
+				attack_tiles = New List<Tile>()
+				For Local attack:Position = Eachin attacks
+					attack_tiles.AddLast(New Tile(attack.x, attack.y, attack_img))
+				End
+				game_state = STATE_ATTACKING
+				Print "State changed to attacking"
 			End
 		End
 	End
