@@ -65,15 +65,16 @@ Class Unit
 		DrawImage(unit_stats.img, x, y, 0.0, 1.0, 1.0)
 		DrawText(name, x, y + 50)
 		DrawText("HP: " + unit_stats.health + "/" + unit_stats.max_health, x, y + 60)
-		DrawText("Attack: " + unit_stats.attack, x, y + 70)
-		DrawText("Range: " + unit_stats.range, x, y + 80)
-		DrawText("Speed: " + unit_stats.speed, x, y + 90)
+		DrawText("Speed: " + unit_stats.speed, x, y + 72)
 		
-		Local height:Int = 110
+		Local height:Int = 100
 		For Local weap:Weapon = Eachin armament
 			If weap.uses > 0
 				weap.use_tile = New Tile (x, y + height, weap.img)
 				weap.Draw()
+				DrawText("Name: " + weap.name, x + 50, y + height)
+				DrawText("Damage: " + weap.damage, x + 50, y + height + 12)
+				DrawText("Range: " + weap.close_range + "-" + weap.long_range, x + 50, y + height + 24)
 				height += 50
 			End
 		End
@@ -110,7 +111,13 @@ Class Unit
 	End
 	
 	Method Attack:Int()
-		Return unit_stats.attack
+		For Local weap:Weapon = Eachin armament
+			If weap.selected = 1
+				Return weap.damage
+			End
+		End
+		' No weapon selected and attacking? do 1 damage
+		Return 1
 	End
 	
 	Method Damaged:Int(damage:Int)
@@ -183,6 +190,7 @@ Class Weapon
 	Field damage:Int
 	Field uses:Int
 	Field loaded:Int
+	Field selected:Int
 	Field close_range:Int
 	Field long_range:Int
 	Field img:Image
@@ -196,6 +204,7 @@ Class Weapon
 		Self.handed = handed
 		Self.damage = damage
 		Self.uses = 1
+		Self.selected = 0
 		Self.close_range = close_range
 		Self.long_range = long_range
 	End
@@ -237,6 +246,11 @@ Class Weapon
 	
 	Method Reset()
 		Self.uses = 1
+		Self.selected = 0
+	End
+	
+	Method Selected()
+		Self.selected = 1
 	End
 	
 End

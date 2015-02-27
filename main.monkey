@@ -41,7 +41,7 @@ Class RepelBoarders Extends App
 	
 	Field end_button:Tile
 	Field end_img:Image
-	Field last_end:Float = 0.0
+	Field last_click:Float = 0.0
 	
 	Method OnCreate()
 		Print "Creating Game"
@@ -149,8 +149,8 @@ Class RepelBoarders Extends App
 		End
 		' End Turn at any time
 		If (TouchDown(0))
-			If (TouchDown(0) And end_button.Clicked(TouchX(0), TouchY(0)) And (Millisecs() - last_end > 1000))
-				last_end = Millisecs()
+			If (TouchDown(0) And end_button.Clicked(TouchX(0), TouchY(0)) And (Millisecs() - last_click > 500))
+				last_click = Millisecs()
 				EndTurn()
 			End
 		End
@@ -172,20 +172,25 @@ Class RepelBoarders Extends App
 			game_map.Draw()
 			For Local o_unit:Unit = Eachin opponent_army
 				o_unit.Draw()
-				If player_turn = 1 And o_unit.moved = 0
-					DrawImage(can_select_img, o_unit.pos.x, o_unit.pos.y)
-				End
 			End
 			For Local p_unit:Unit = Eachin player_army
 				p_unit.Draw()
-				If player_turn = 0 And p_unit.moved = 0
-					DrawImage(can_select_img, p_unit.pos.x, p_unit.pos.y)
-				End
 			End
 			If game_state <> STATE_FINISHED
 				end_button.Draw()
 			End
 			Select game_state
+				Case STATE_UNIT_SELECT
+					For Local o_unit:Unit = Eachin opponent_army
+						If player_turn = 1 And o_unit.moved = 0
+							DrawImage(can_select_img, o_unit.pos.x, o_unit.pos.y)
+						End
+					End
+					For Local p_unit:Unit = Eachin player_army
+						If player_turn = 0 And p_unit.moved = 0
+							DrawImage(can_select_img, p_unit.pos.x, p_unit.pos.y)
+						End
+					End
 				Case STATE_MOVING
 					active_unit.DrawActive(490, 50)
 					For Local move:Tile = Eachin move_tiles
@@ -193,6 +198,9 @@ Class RepelBoarders Extends App
 					End
 				Case STATE_WEAPONS
 					active_unit.DrawActive(490, 50)
+					For Local weap:Weapon = Eachin active_unit.armament
+						DrawImage(can_select_img, weap.use_tile.pos.x, weap.use_tile.pos.y)
+					End
 				Case STATE_ATTACKING
 					active_unit.DrawActive(490, 50)
 					For Local attack:Tile = Eachin attack_tiles
@@ -210,7 +218,7 @@ Class RepelBoarders Extends App
 
 	Method ChooseUnit(current_army:List<Unit>) 
 		For Local some_unit:Unit = Eachin current_army
-			If (some_unit.Clicked(TouchX(0), TouchY(0)) And some_unit.moved = 0)
+			If (some_unit.Clicked(TouchX(0), TouchY(0)) And some_unit.moved = 0 And (Millisecs() - last_click > 500))
 				active_unit = some_unit
 				Print active_unit.name
 				game_state = STATE_MOVING
@@ -221,6 +229,7 @@ Class RepelBoarders Extends App
 				For Local move:Position = Eachin moves
 					move_tiles.AddLast(New Tile(move.x, move.y, move_img))
 				End
+				last_click = Millisecs()
 			End
 		End
 	End
@@ -231,6 +240,9 @@ Class RepelBoarders Extends App
 				active_unit.Move(move.pos)
 				game_state = STATE_WEAPONS
 				Print "State changed to weapons"
+			Else If (active_unit.Clicked(TouchX(0), TouchY(0)) And active_unit.moved = 0 And (Millisecs() - last_click > 500))
+				game_state = STATE_UNIT_SELECT
+				last_click = Millisecs()
 			End
 		End
 	End
@@ -255,6 +267,7 @@ Class RepelBoarders Extends App
 	Method ChooseWeapon(current_army:List<Unit>)
 		For Local weap:Weapon = Eachin active_unit.armament
 			If (weap.use_tile.Clicked(TouchX(0), TouchY(0)) And game_state = STATE_WEAPONS)
+				weap.Selected()
 				attacks = weap.FindAttacks(active_unit.pos, current_army)
 				FilterAttacks()
 				attack_tiles = New List<Tile>()
