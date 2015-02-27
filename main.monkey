@@ -44,7 +44,6 @@ Class RepelBoarders Extends App
 	Field last_click:Float = 0.0
 	
 	Method OnCreate()
-		Print "Creating Game"
 		SetUpdateRate(15)
 		
 		title_screen = LoadImage("images/TITLE_SCREEN.png")
@@ -74,7 +73,8 @@ Class RepelBoarders Extends App
 		End
 		 
 		game_map = New TileMap(MAP_W, MAP_H, tile_list)
-		
+		Local hms_names:String[] = ["James", "Henry", "Bartholomew", "Arthur", "Reginald", "Matthew", "Joseph", "David", "William", "Jonathan"]
+		Local pirate_names:String[] = ["Jack", "Bruce", "Bill", "Bob", "Alfred", "Larry", "One-Eyed Pete", "Jim", "Red Shirt Ryan", "Ulyses"]
 		' Build unit list 
 		Local marine_img:Image = LoadImage("images/RED_MARINE.png")
 		Local pirate_img:Image = LoadImage("images/BLUE_PIRATE.png")
@@ -86,15 +86,15 @@ Class RepelBoarders Extends App
 		
 		For Local m:Int = 2 Until 7
 			If (m Mod 2 = 0)
-				Local p_unit:Unit = New Unit(m, "pirate", m * TILE_W, MAP_H * TILE_H - 48, New Stats("Pirate", 6, 5, 1, 3, pirate_img))
-				Local o_unit:Unit = New Unit(m, "sailor", m * TILE_W, 0, New Stats("Sailor", 8, 2, 1, 3, sailor_img))
+				Local p_unit:Unit = New Unit(m, pirate_names[m], m * TILE_W, MAP_H * TILE_H - 48, New Stats("Pirate", 6, 5, 1, 3, pirate_img))
+				Local o_unit:Unit = New Unit(m, hms_names[m], m * TILE_W, 0, New Stats("Sailor", 8, 2, 1, 3, sailor_img))
 				p_unit.armament.AddLast(New Weapon("Sabre", "Sword", sabre_img, 5, 1, 4, 0, 1))
 				o_unit.armament.AddLast(New Weapon("Sabre", "Sword", sabre_img, 5, 1, 4, 0, 1))
 				player_army.AddLast(p_unit)
 				opponent_army.AddLast(o_unit)
 			Else
-				Local p_unit:Unit = New Unit(m, "bucaneer", m * TILE_W, MAP_H * TILE_H - 48, New Stats("Bucaneer", 10, 4, 2, 2, bucaneer_img))
-				Local o_unit:Unit = New Unit(m, "marine", m * TILE_W, 0, New Stats("Marine", 10, 3, 3, 2, marine_img))
+				Local p_unit:Unit = New Unit(m, pirate_names[m], m * TILE_W, MAP_H * TILE_H - 48, New Stats("Bucaneer", 10, 4, 2, 2, bucaneer_img))
+				Local o_unit:Unit = New Unit(m, hms_names[m], m * TILE_W, 0, New Stats("Marine", 10, 3, 3, 2, marine_img))
 				p_unit.armament.AddLast(New Weapon("Sabre", "Sword", sabre_img, 5, 1, 4, 0, 1))
 				p_unit.armament.AddLast(New Weapon("Pistol", "Pistol", pistol_img, 5, 1, 2, 0, 2))
 				o_unit.armament.AddLast(New Weapon("Musket", "Musket", musket_img, 7, 2, 3, 0, 3))
@@ -220,9 +220,7 @@ Class RepelBoarders Extends App
 		For Local some_unit:Unit = Eachin current_army
 			If (some_unit.Clicked(TouchX(0), TouchY(0)) And some_unit.moved = 0 And (Millisecs() - last_click > 500))
 				active_unit = some_unit
-				Print active_unit.name
 				game_state = STATE_MOVING
-				Print "State changed to moving"
 				moves = active_unit.FindMoves()
 				FilterMoves()
 				move_tiles = New List<Tile>()
@@ -239,7 +237,6 @@ Class RepelBoarders Extends App
 			If (move.Clicked(TouchX(0), TouchY(0)))
 				active_unit.Move(move.pos)
 				game_state = STATE_WEAPONS
-				Print "State changed to weapons"
 			Else If (active_unit.Clicked(TouchX(0), TouchY(0)) And active_unit.moved = 0 And (Millisecs() - last_click > 500))
 				game_state = STATE_UNIT_SELECT
 				last_click = Millisecs()
@@ -259,7 +256,6 @@ Class RepelBoarders Extends App
 					End
 				End
 				game_state = STATE_UNIT_SELECT
-				Print "State changed to unit select"
 			End
 		End
 	End
@@ -275,7 +271,6 @@ Class RepelBoarders Extends App
 					attack_tiles.AddLast(New Tile(attack.x, attack.y, attack_img))
 				End
 				game_state = STATE_ATTACKING
-				Print "State changed to attacking"
 			End
 		End
 	End
@@ -335,7 +330,6 @@ Class RepelBoarders Extends App
 				some_unit.moved = 0
 			End
 		End
-		Print "Current Player: " + player_turn + " "
 		end_button = New Tile(490, 360, end_img.GrabImage(0, 48 * player_turn, 108, 48), 108, 48)
 		game_state = STATE_UNIT_SELECT
 	End

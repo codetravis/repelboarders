@@ -63,7 +63,7 @@ Class Unit
 	
 	Method DrawActive(x:Float, y:Float)
 		DrawImage(unit_stats.img, x, y, 0.0, 1.0, 1.0)
-		DrawText(name, x, y + 50)
+		DrawText(name + " " + unit_stats.type, x, y + 50)
 		DrawText("HP: " + unit_stats.health + "/" + unit_stats.max_health, x, y + 60)
 		DrawText("Speed: " + unit_stats.speed, x, y + 72)
 		
