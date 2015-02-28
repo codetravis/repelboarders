@@ -1,4 +1,5 @@
 Import repelboarders
+Import rumai
 
 Const STATE_MENU:Int = 0
 Const STATE_CAMPAIGN:Int = 1
@@ -22,6 +23,9 @@ Class RepelBoarders Extends App
 	Field active_unit:Unit
 	Field moves:List<Position> = New List<Position>()
 	Field attacks:List<Position> = New List<Position>()
+	' AI variables
+	Field ai_name:String
+	Field use_ai:Int
 	
 	' Selection Box images
 	Field attack_img:Image 
@@ -45,6 +49,9 @@ Class RepelBoarders Extends App
 	
 	Method OnCreate()
 		SetUpdateRate(15)
+		
+		ai_name = "Too Much Rum"
+		use_ai = 1
 		
 		title_screen = LoadImage("images/TITLE_SCREEN.png")
 		title_header = LoadImage("images/TITLE_HEADER.png")
@@ -131,19 +138,19 @@ Class RepelBoarders Extends App
 			Case STATE_CAMPAIGN
 			
 			Case STATE_UNIT_SELECT
-				If (TouchDown(0))
+				If (use_ai = 1 And player_turn = 1) Or TouchDown(0)
 					ChooseUnit(current_army)
 				End
 			Case STATE_MOVING
-				If (TouchDown(0))
+				If (use_ai = 1 And player_turn = 1) Or TouchDown(0)
 					ChooseMove(current_army)
 				End
 			Case STATE_WEAPONS
-				If (TouchDown(0))
-					ChooseWeapon(current_army)
+				If (use_ai = 1 And player_turn = 1) Or TouchDown(0)
+					ChooseWeapon(enemy_army)
 				End
 			Case STATE_ATTACKING
-				If (TouchDown(0))
+				If (use_ai = 1 And player_turn = 1) Or TouchDown(0)
 					ChooseAttack(enemy_army)
 				End
 		End
@@ -217,9 +224,9 @@ Class RepelBoarders Extends App
 	End
 
 	Method ChooseUnit(current_army:List<Unit>) 
-		For Local some_unit:Unit = Eachin current_army
-			If (some_unit.Clicked(TouchX(0), TouchY(0)) And some_unit.moved = 0 And (Millisecs() - last_click > 500))
-				active_unit = some_unit
+		If (use_ai = 1 And player_turn = 1)
+			If AIHasUnits(current_army)
+				active_unit = DrunkSelect(current_army)
 				game_state = STATE_MOVING
 				moves = active_unit.FindMoves()
 				FilterMoves()
@@ -227,50 +234,101 @@ Class RepelBoarders Extends App
 				For Local move:Position = Eachin moves
 					move_tiles.AddLast(New Tile(move.x, move.y, move_img))
 				End
-				last_click = Millisecs()
+			Else
+				EndTurn()
+			End
+		Else
+			For Local some_unit:Unit = Eachin current_army
+				If (some_unit.Clicked(TouchX(0), TouchY(0)) And some_unit.moved = 0 And (Millisecs() - last_click > 500))
+					active_unit = some_unit
+					game_state = STATE_MOVING
+					moves = active_unit.FindMoves()
+					FilterMoves()
+					move_tiles = New List<Tile>()
+					For Local move:Position = Eachin moves
+						move_tiles.AddLast(New Tile(move.x, move.y, move_img))
+					End
+					last_click = Millisecs()
+				End
 			End
 		End
 	End
 	
 	Method ChooseMove(current_army:List<Unit>)
-		For Local move:Tile = Eachin move_tiles
-			If (move.Clicked(TouchX(0), TouchY(0)))
-				active_unit.Move(move.pos)
-				game_state = STATE_WEAPONS
-			Else If (active_unit.Clicked(TouchX(0), TouchY(0)) And active_unit.moved = 0 And (Millisecs() - last_click > 500))
-				game_state = STATE_UNIT_SELECT
-				last_click = Millisecs()
+		' If we cant move, go toToeNexttStep	
+		If moves.Count() = 0
+			game_state = STATE_WEAPONS
+		Else If (use_ai = 1 And player_turn = 1)
+			active_unit.Move(DrunkMove(moves))
+			game_state = STATE_WEAPONS
+		Else
+			For Local move:Tile = Eachin move_tiles
+				If (move.Clicked(TouchX(0), TouchY(0)))
+					active_unit.Move(move.pos)
+					game_state = STATE_WEAPONS
+				Else If (active_unit.Clicked(TouchX(0), TouchY(0)) And active_unit.moved = 0 And (Millisecs() - last_click > 500))
+					game_state = STATE_UNIT_SELECT
+					last_click = Millisecs()
+				End
 			End
 		End
 	End
 	
 	Method ChooseAttack(enemy_army:List<Unit>)
-		For Local attack:Tile = Eachin attack_tiles
-			If (attack.Clicked(TouchX(0), TouchY(0)) And game_state = STATE_ATTACKING)
-				For Local enemy:Unit = Eachin enemy_army
-					If attack.pos.Same(enemy.pos)
-						Local enemy_hp:Int = enemy.Damaged(active_unit.Attack())
-						If (enemy_hp <= 0)
-							active_unit.LevelUp()
-						End
+		' if we cant attack, go to next step
+		If attacks.Count() = 0
+			game_state = STATE_UNIT_SELECT
+		Else If (use_ai = 1 And player_turn = 1)
+			Local attack:Position = DrunkAttack(attacks)
+			For Local enemy:Unit = Eachin enemy_army
+				If attack.Same(enemy.pos)
+					Local enemy_hp:Int = enemy.Damaged(active_unit.Attack())
+					If (enemy_hp <= 0)
+						active_unit.LevelUp()
 					End
 				End
-				game_state = STATE_UNIT_SELECT
+			End
+			game_state = STATE_UNIT_SELECT
+		Else
+			For Local attack:Tile = Eachin attack_tiles
+				If (attack.Clicked(TouchX(0), TouchY(0)) And game_state = STATE_ATTACKING)
+					For Local enemy:Unit = Eachin enemy_army
+						If attack.pos.Same(enemy.pos)
+							Local enemy_hp:Int = enemy.Damaged(active_unit.Attack())
+							If (enemy_hp <= 0)
+								active_unit.LevelUp()
+							End
+						End
+					End
+					game_state = STATE_UNIT_SELECT
+				End
 			End
 		End
 	End
 	
-	Method ChooseWeapon(current_army:List<Unit>)
-		For Local weap:Weapon = Eachin active_unit.armament
-			If (weap.use_tile.Clicked(TouchX(0), TouchY(0)) And game_state = STATE_WEAPONS)
-				weap.Selected()
-				attacks = weap.FindAttacks(active_unit.pos, current_army)
-				FilterAttacks()
-				attack_tiles = New List<Tile>()
-				For Local attack:Position = Eachin attacks
-					attack_tiles.AddLast(New Tile(attack.x, attack.y, attack_img))
+	Method ChooseWeapon(enemy_army:List<Unit>)
+		If (use_ai = 1 And player_turn = 1)
+			Local weap:Weapon = DrunkWeapon(active_unit)
+			weap.Selected()
+			attacks = weap.FindAttacks(active_unit.pos, enemy_army)
+			FilterAttacks()
+			attack_tiles = New List<Tile>()
+			For Local attack:Position = Eachin attacks
+				attack_tiles.AddLast(New Tile(attack.x, attack.y, attack_img))
+			End
+			game_state = STATE_ATTACKING
+		Else
+			For Local weap:Weapon = Eachin active_unit.armament
+				If (weap.use_tile.Clicked(TouchX(0), TouchY(0)) And game_state = STATE_WEAPONS)
+					weap.Selected()
+					attacks = weap.FindAttacks(active_unit.pos, enemy_army)
+					FilterAttacks()
+					attack_tiles = New List<Tile>()
+					For Local attack:Position = Eachin attacks
+						attack_tiles.AddLast(New Tile(attack.x, attack.y, attack_img))
+					End
+					game_state = STATE_ATTACKING
 				End
-				game_state = STATE_ATTACKING
 			End
 		End
 	End

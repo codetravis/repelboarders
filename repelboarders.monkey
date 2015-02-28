@@ -32,6 +32,10 @@ Class Position
 		End
 	End
 	
+	Method ManDistance:Int(pos:Position)
+		Return Int(Abs(x - pos.x)/TILE_W) + Int(Abs(y - pos.y)/TILE_H)
+	End
+	
 End
 
 
@@ -213,27 +217,13 @@ Class Weapon
 		Self.use_tile.Draw()
 	End
 	
-	Method FindAttacks:List<Position>(pos:Position, friendlies:List<Unit>)
+	Method FindAttacks:List<Position>(pos:Position, enemies:List<Unit>)
 		Local attacks:List<Position> = New List<Position>()
 		' Find all possible attacks
-		For Local i:Int = close_range Until long_range + 1
-			For Local j:Int = close_range Until long_range + 1
-				If (((i > 0) Or (j > 0)) And (i + j <= long_range) And (i + j >= close_range))
-					attacks.AddLast(New Position(pos.x + i * TILE_W, pos.y + j * TILE_H))
-					attacks.AddLast(New Position(pos.x - i * TILE_W, pos.y + j * TILE_H))
-					attacks.AddLast(New Position(pos.x + i * TILE_W, pos.y - j * TILE_H))
-					attacks.AddLast(New Position(pos.x - i * TILE_W, pos.y - j * TILE_H))
-				End
-			End
-		End
-		' Filter out attacks that would hit friendly units if we are doing damage
-		If (damage > 0)
-			For Local friend:Unit = Eachin friendlies
-				For Local attack:Position = Eachin attacks
-					If (attack.Same(friend.pos))
-						attacks.Remove(attack)
-					End
-				End
+		For Local enemy:Unit = Eachin enemies
+			Local distance = pos.ManDistance(enemy.pos)
+			If (distance <= long_range) And (distance > close_range)
+				attacks.AddLast(enemy.pos)
 			End
 		End
 		Return attacks
