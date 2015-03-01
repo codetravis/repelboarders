@@ -61,7 +61,7 @@ Class Unit
 	Method Draw()
 		DrawImage(unit_stats.img, pos.x, pos.y, 0.0, 1.0, 1.0)
 		SetColor(255, 0, 0)
-		DrawRect(pos.x + 38, pos.y + 4, 3, (12 * Float(unit_stats.health)/Float(unit_stats.max_health)))
+		DrawRect(pos.x + 37, pos.y + 4, 3, (14.0 * Float(unit_stats.health)/Float(unit_stats.max_health)))
 		SetColor(255, 255, 255)
 	End
 	
