@@ -9,6 +9,9 @@ Const STATE_BUILD:Int = 4
 Const STATE_UNIT_SELECT:Int = 5
 Const STATE_FINISHED:Int = 6
 Const STATE_WEAPONS:Int = 7
+Const STATE_MODE_SELECT:Int = 8
+Const STATE_AI_SELECT:Int = 9
+Const STATE_INSTRUCTIONS:Int = 10
 
 Const STATE_ALIVE:Int = 0
 Const STATE_DEAD:Int = 1
@@ -38,6 +41,14 @@ Class RepelBoarders Extends App
 	Field fight_button:Tile
 	Field finish_flags:Image
 	
+	' Menu and option screen images and tiles
+	Field vsai_button_img:Image
+	Field vsai_button:Tile
+	Field hotseat_button_img:Image
+	Field hotseat_button:Tile
+	Field rumai_button_img:Image
+	Field rumai_button:Tile
+	
 	Field attack_tiles:List<Tile> = New List<Tile>()
 	Field move_tiles:List<Tile> = New List<Tile>()
 	
@@ -46,18 +57,27 @@ Class RepelBoarders Extends App
 	Field end_button:Tile
 	Field end_img:Image
 	Field last_click:Float = 0.0
+	Field last_ai_action:Float = 0.0
+	Field ai_pause:Float = 300.0
 	
 	Method OnCreate()
 		SetUpdateRate(15)
 		
-		ai_name = "Too Much Rum"
+		ai_name = ""
 		use_ai = 1
 		
 		title_screen = LoadImage("images/TITLE_SCREEN.png")
 		title_header = LoadImage("images/TITLE_HEADER.png")
 		fight_img = LoadImage("images/FIGHT_BUTTON.png")
-		' create the begin "FIGHT" button
+		vsai_button_img = LoadImage("images/VSAI_BUTTON.png")
+		hotseat_button_img = LoadImage("images/HOTSEAT_BUTTON.png")
+		rumai_button_img = LoadImage("images/RUMAI_BUTTON.png")
+		' create the begin menu buttons
 		fight_button = New Tile(200, 380, fight_img, 240, 80)
+		vsai_button = New Tile(218, 50, vsai_button_img, 204, 72)
+		hotseat_button = New Tile(218, 358, hotseat_button_img, 204, 72)
+		rumai_button = New Tile(218, 50, rumai_button_img, 204, 72)
+		
 		finish_flags = LoadImage("images/FINISH_FLAGS.png")
 		
 		attack_img = LoadImage("images/ATTACK_TILE.png")
@@ -104,7 +124,7 @@ Class RepelBoarders Extends App
 				Local o_unit:Unit = New Unit(m, hms_names[m], m * TILE_W, 0, New Stats("Marine", 10, 3, 3, 2, marine_img))
 				p_unit.armament.AddLast(New Weapon("Sabre", "Sword", sabre_img, 5, 1, 4, 0, 1))
 				p_unit.armament.AddLast(New Weapon("Pistol", "Pistol", pistol_img, 5, 1, 2, 0, 2))
-				o_unit.armament.AddLast(New Weapon("Musket", "Musket", musket_img, 7, 2, 3, 0, 3))
+				o_unit.armament.AddLast(New Weapon("Musket", "Musket", musket_img, 7, 2, 5, 1, 3))
 				player_army.AddLast(p_unit)
 				opponent_army.AddLast(o_unit)
 			End
@@ -133,30 +153,59 @@ Class RepelBoarders Extends App
 		Select game_state
 			Case STATE_MENU
 				If (TouchDown(0) And fight_button.Clicked(TouchX(0), TouchY(0)))
+					game_state = STATE_MODE_SELECT
+					last_click = Millisecs()
+				End
+			Case STATE_MODE_SELECT
+				If (TouchDown(0) And (Millisecs() - last_click > 500))
+					If (vsai_button.Clicked(TouchX(0), TouchY(0)))
+						use_ai = 1
+						game_state = STATE_AI_SELECT
+						last_click = Millisecs()
+					Else If (hotseat_button.Clicked(TouchX(0), TouchY(0)))
+						use_ai = 0
+						game_state = STATE_INSTRUCTIONS
+						last_click = Millisecs()
+					End
+				End
+			Case STATE_AI_SELECT
+				If (TouchDown(0) And (Millisecs() - last_click > 500))
+					If (rumai_button.Clicked(TouchX(0), TouchY(0)))
+						ai_name = "Too Much Rum Tom"
+						game_state = STATE_INSTRUCTIONS
+					End
+				End
+			Case STATE_INSTRUCTIONS
+				If (TouchDown(0) And (Millisecs() - last_click > 500))
 					game_state = STATE_UNIT_SELECT
 				End
-			Case STATE_CAMPAIGN
-			
 			Case STATE_UNIT_SELECT
 				If (use_ai = 1 And player_turn = 1) Or TouchDown(0)
 					ChooseUnit(current_army)
 				End
 			Case STATE_MOVING
-				If (use_ai = 1 And player_turn = 1) Or TouchDown(0)
+				If ((use_ai = 1 And player_turn = 1) Or TouchDown(0))
 					ChooseMove(current_army)
+				Else If (moves.Count() = 0)
+					game_state = STATE_WEAPONS
 				End
 			Case STATE_WEAPONS
-				If (use_ai = 1 And player_turn = 1) Or TouchDown(0)
+				If ((use_ai = 1 And player_turn = 1) Or TouchDown(0))
 					ChooseWeapon(enemy_army)
 				End
 			Case STATE_ATTACKING
-				If (use_ai = 1 And player_turn = 1) Or TouchDown(0)
+				If ((use_ai = 1 And player_turn = 1) Or TouchDown(0))
 					ChooseAttack(enemy_army)
+				Else If (attacks.Count() = 0) 
+					game_state = STATE_UNIT_SELECT
 				End
 		End
 		' End Turn at any time
 		If (TouchDown(0))
-			If (TouchDown(0) And end_button.Clicked(TouchX(0), TouchY(0)) And (Millisecs() - last_click > 500))
+			If (TouchDown(0) And 
+					end_button.Clicked(TouchX(0), TouchY(0)) And 
+					(Millisecs() - last_click > 500) And 
+					(use_ai = 0 Or player_turn = 0))
 				last_click = Millisecs()
 				EndTurn()
 			End
@@ -171,68 +220,83 @@ Class RepelBoarders Extends App
 		Cls(128, 128, 128)
 		'Print "clear screen"
 		PushMatrix()
-		If game_state = STATE_MENU
-			DrawImage(title_screen, 56, 426, 90.0, 1.0, 1.0)
-			DrawImage(title_header, 104, 10)
-			fight_button.Draw()
-		Else
-			game_map.Draw()
-			For Local o_unit:Unit = Eachin opponent_army
-				o_unit.Draw()
-			End
-			For Local p_unit:Unit = Eachin player_army
-				p_unit.Draw()
-			End
-			If game_state <> STATE_FINISHED
-				end_button.Draw()
-			End
-			Select game_state
-				Case STATE_UNIT_SELECT
-					For Local o_unit:Unit = Eachin opponent_army
-						If player_turn = 1 And o_unit.moved = 0
-							DrawImage(can_select_img, o_unit.pos.x, o_unit.pos.y)
-						End
+		Select game_state
+			Case STATE_MENU
+				DrawImage(title_screen, 56, 426, 90.0, 1.0, 1.0)
+				DrawImage(title_header, 104, 10)
+				fight_button.Draw()
+			Case STATE_MODE_SELECT
+				Cls(29, 124, 249)
+				vsai_button.Draw()
+				hotseat_button.Draw()
+			Case STATE_AI_SELECT
+				Cls(29, 124, 249)
+				rumai_button.Draw()
+			Case STATE_INSTRUCTIONS
+				Cls(29, 124, 249)
+				DrawImage(can_select_img, 100, 40)
+				DrawImage(move_img, 100, 110)
+				DrawImage(attack_img, 100, 180)
+				DrawText("Tap blue boxes to select units or weapons", 168, 50)
+				DrawText("Tap selected units again to deselect them", 168, 64)
+				DrawText("Tap green boxes to move units", 168, 120)
+				DrawText("Tap red boxes to attack an enemy unit", 168, 190)
+				DrawText("Tap Screen to Play", 320, 420, .5)
+			Case STATE_UNIT_SELECT
+				DrawUnits()
+				For Local o_unit:Unit = Eachin opponent_army
+					If player_turn = 1 And o_unit.moved = 0
+						DrawImage(can_select_img, o_unit.pos.x, o_unit.pos.y)
 					End
-					For Local p_unit:Unit = Eachin player_army
-						If player_turn = 0 And p_unit.moved = 0
-							DrawImage(can_select_img, p_unit.pos.x, p_unit.pos.y)
-						End
+				End
+				For Local p_unit:Unit = Eachin player_army
+					If player_turn = 0 And p_unit.moved = 0
+						DrawImage(can_select_img, p_unit.pos.x, p_unit.pos.y)
 					End
-				Case STATE_MOVING
-					active_unit.DrawActive(490, 50)
-					For Local move:Tile = Eachin move_tiles
-						move.Draw()
-					End
-				Case STATE_WEAPONS
-					active_unit.DrawActive(490, 50)
-					For Local weap:Weapon = Eachin active_unit.armament
-						DrawImage(can_select_img, weap.use_tile.pos.x, weap.use_tile.pos.y)
-					End
-				Case STATE_ATTACKING
-					active_unit.DrawActive(490, 50)
-					For Local attack:Tile = Eachin attack_tiles
-						attack.Draw()
-					End
-				Case STATE_FINISHED
-					DrawImage(finish_flags.GrabImage(84 * player_turn, 0, 84, 156), 180, 100)
-					DrawText("Finished Game", 220, 25)
-				
-			End
+				End
+			Case STATE_MOVING
+				DrawUnits()
+				active_unit.DrawActive(490, 50)
+				DrawImage(can_select_img, active_unit.pos.x, active_unit.pos.y)
+				For Local move:Tile = Eachin move_tiles
+					move.Draw()
+				End
+			Case STATE_WEAPONS
+				DrawUnits()
+				active_unit.DrawActive(490, 50)
+				DrawImage(can_select_img, active_unit.pos.x, active_unit.pos.y)
+				For Local weap:Weapon = Eachin active_unit.armament
+					DrawImage(can_select_img, weap.use_tile.pos.x, weap.use_tile.pos.y)
+				End
+			Case STATE_ATTACKING
+				DrawUnits()
+				active_unit.DrawActive(490, 50)
+				DrawImage(can_select_img, active_unit.pos.x, active_unit.pos.y)
+				For Local attack:Tile = Eachin attack_tiles
+					attack.Draw()
+				End
+			Case STATE_FINISHED
+				DrawUnits()
+				DrawImage(finish_flags.GrabImage(84 * player_turn, 0, 84, 156), 180, 100)
+				DrawText("Finished Game", 220, 25)
 			
-		End			
+		End		
 		PopMatrix()
 	End
 
 	Method ChooseUnit(current_army:List<Unit>) 
 		If (use_ai = 1 And player_turn = 1)
 			If AIHasUnits(current_army)
-				active_unit = DrunkSelect(current_army)
-				game_state = STATE_MOVING
-				moves = active_unit.FindMoves()
-				FilterMoves()
-				move_tiles = New List<Tile>()
-				For Local move:Position = Eachin moves
-					move_tiles.AddLast(New Tile(move.x, move.y, move_img))
+				If (Millisecs() - last_ai_action > ai_pause)
+					active_unit = DrunkSelect(current_army)
+					game_state = STATE_MOVING
+					moves = active_unit.FindMoves()
+					FilterMoves()
+					move_tiles = New List<Tile>()
+					For Local move:Position = Eachin moves
+						move_tiles.AddLast(New Tile(move.x, move.y, move_img))
+					End
+					last_ai_action = Millisecs()
 				End
 			Else
 				EndTurn()
@@ -255,12 +319,15 @@ Class RepelBoarders Extends App
 	End
 	
 	Method ChooseMove(current_army:List<Unit>)
-		' If we cant move, go toToeNexttStep	
+		' If we cant move, go to the Next Step	
 		If moves.Count() = 0
 			game_state = STATE_WEAPONS
 		Else If (use_ai = 1 And player_turn = 1)
-			active_unit.Move(DrunkMove(moves))
-			game_state = STATE_WEAPONS
+			If (Millisecs() - last_ai_action > ai_pause)
+				active_unit.Move(DrunkMove(moves))
+				game_state = STATE_WEAPONS
+				last_ai_action = Millisecs()
+			End
 		Else
 			For Local move:Tile = Eachin move_tiles
 				If (move.Clicked(TouchX(0), TouchY(0)))
@@ -279,16 +346,19 @@ Class RepelBoarders Extends App
 		If attacks.Count() = 0
 			game_state = STATE_UNIT_SELECT
 		Else If (use_ai = 1 And player_turn = 1)
-			Local attack:Position = DrunkAttack(attacks)
-			For Local enemy:Unit = Eachin enemy_army
-				If attack.Same(enemy.pos)
-					Local enemy_hp:Int = enemy.Damaged(active_unit.Attack())
-					If (enemy_hp <= 0)
-						active_unit.LevelUp()
+			If (Millisecs() - last_ai_action > ai_pause)
+				Local attack:Position = DrunkAttack(attacks)
+				For Local enemy:Unit = Eachin enemy_army
+					If attack.Same(enemy.pos)
+						Local enemy_hp:Int = enemy.Damaged(active_unit.Attack())
+						If (enemy_hp <= 0)
+							active_unit.LevelUp()
+						End
 					End
 				End
+				game_state = STATE_UNIT_SELECT
+				last_ai_action = Millisecs()
 			End
-			game_state = STATE_UNIT_SELECT
 		Else
 			For Local attack:Tile = Eachin attack_tiles
 				If (attack.Clicked(TouchX(0), TouchY(0)) And game_state = STATE_ATTACKING)
@@ -308,15 +378,18 @@ Class RepelBoarders Extends App
 	
 	Method ChooseWeapon(enemy_army:List<Unit>)
 		If (use_ai = 1 And player_turn = 1)
-			Local weap:Weapon = DrunkWeapon(active_unit)
-			weap.Selected()
-			attacks = weap.FindAttacks(active_unit.pos, enemy_army)
-			FilterAttacks()
-			attack_tiles = New List<Tile>()
-			For Local attack:Position = Eachin attacks
-				attack_tiles.AddLast(New Tile(attack.x, attack.y, attack_img))
+			If (Millisecs() - last_ai_action > ai_pause)
+				Local weap:Weapon = DrunkWeapon(active_unit)
+				weap.Selected()
+				attacks = weap.FindAttacks(active_unit.pos, enemy_army)
+				FilterAttacks()
+				attack_tiles = New List<Tile>()
+				For Local attack:Position = Eachin attacks
+					attack_tiles.AddLast(New Tile(attack.x, attack.y, attack_img))
+				End
+				game_state = STATE_ATTACKING
+				last_ai_action = Millisecs()
 			End
-			game_state = STATE_ATTACKING
 		Else
 			For Local weap:Weapon = Eachin active_unit.armament
 				If (weap.use_tile.Clicked(TouchX(0), TouchY(0)) And game_state = STATE_WEAPONS)
@@ -390,6 +463,19 @@ Class RepelBoarders Extends App
 		End
 		end_button = New Tile(490, 360, end_img.GrabImage(0, 48 * player_turn, 108, 48), 108, 48)
 		game_state = STATE_UNIT_SELECT
+	End
+	
+	Method DrawUnits()
+		game_map.Draw()
+		For Local o_unit:Unit = Eachin opponent_army
+			o_unit.Draw()
+		End
+		For Local p_unit:Unit = Eachin player_army
+			p_unit.Draw()
+		End
+		If (game_state <> STATE_FINISHED) And (use_ai = 0 Or player_turn = 0)
+			end_button.Draw()
+		End
 	End
 
 End
