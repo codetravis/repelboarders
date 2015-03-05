@@ -25,6 +25,7 @@ Class RepelBoarders Extends App
 	Field opponent_army:List<Unit> = New List<Unit>()
 	Field active_unit:Unit
 	Field view_unit:Unit
+	Field unknown_unit:Unit
 	Field moves:List<Position> = New List<Position>()
 	Field attacks:List<Position> = New List<Position>()
 	' AI variables
@@ -115,10 +116,13 @@ Class RepelBoarders Extends App
 		Local sabre_img:Image = LoadImage("images/SABRE.png")
 		Local pistol_img:Image = LoadImage("images/PISTOL.png")
 		Local musket_img:Image = LoadImage("images/MUSKET.png")
-		Local damage_img:Image = LoadImage("animations/ATTACK_ANIMATION.png", 3)
-		Local damage_anim:Animation = New Animation("damaged", damage_img, 0, 3, 5)
+		Local unknown_img:Image = LoadImage("images/UNKNOWN.png")
+		Local damage_img:Image = LoadImage("animations/ATTACK_ANIMATION.png", 6)
+		Local damage_anim:Animation = New Animation("damaged", damage_img, 0, 6, 3)
 		
-		
+		unknown_unit = New Unit(99, "No Unit Selected", -50, -50, New Stats("", 0, 0, 0, 0, unknown_img), damage_anim)
+		active_unit = unknown_unit
+		view_unit = unknown_unit
 		For Local m:Int = 2 Until 7
 			If (m Mod 2 = 0)
 				Local p_unit:Unit = New Unit(m, pirate_names[m], m * TILE_W, MAP_H * TILE_H - 48, 
@@ -261,6 +265,7 @@ Class RepelBoarders Extends App
 				DrawText("Tap Screen to Play", 320, 420, .5)
 			Case STATE_UNIT_SELECT
 				DrawUnits()
+				view_unit.DrawView(490, 50)
 				For Local o_unit:Unit = Eachin opponent_army
 					If player_turn = 1 And o_unit.moved = 0
 						DrawImage(can_select_img, o_unit.pos.x, o_unit.pos.y)
@@ -427,11 +432,14 @@ Class RepelBoarders Extends App
 	End
 	
 	Method ViewUnit(enemy_army:List<Unit>)
-		view_unit = active_unit
+		
 		For Local enemy:Unit = Eachin enemy_army
 			If enemy.Clicked(TouchX(0), TouchY(0))
 				view_unit = enemy
 			End
+		End
+		If view_unit = Null
+			view_unit = unknown_unit
 		End
 	End
 	
