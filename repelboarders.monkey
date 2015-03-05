@@ -47,8 +47,10 @@ Class Unit
 	Field moved:Int
 	Field armament:List<Weapon>
 	Field protection:List<Armor>
+	Field animations:List<Animation> = New List<Animation>()
+	Field cur_anim:Animation = Null
 	
-	Method New(id:Int, name:String, x:Float, y:Float, u_stats:Stats)
+	Method New(id:Int, name:String, x:Float, y:Float, u_stats:Stats, dmg_anim:Animation)
 		' Use type to load the attributes
 		Self.name = name
 		Self.pos = New Position(x, y)
@@ -56,13 +58,41 @@ Class Unit
 		Self.moved = 0
 		Self.armament = New List<Weapon>()
 		Self.protection = New List<Armor>()
+		
+		Self.animations.AddLast(dmg_anim)
+	End
+	
+	Method SetAnimation(name:String)
+		If cur_anim = Null Or name <> cur_anim.name
+			cur_anim = GetAnimationByName(name)
+			cur_anim.start_time = Millisecs()
+		End
+	End
+	
+	Method GetAnimationByName:Animation(name:String)
+		For Local anim:Animation = Eachin animations
+			If anim.name = name
+				Return anim
+			End
+		End
+		
+		Return Null
 	End
 	
 	Method Draw()
+		Local cur_frame:Int = 0
+		
 		DrawImage(unit_stats.img, pos.x, pos.y, 0.0, 1.0, 1.0)
 		SetColor(255, 0, 0)
 		DrawRect(pos.x + 37, pos.y + 4, 3, (14.0 * Float(unit_stats.health)/Float(unit_stats.max_health)))
 		SetColor(255, 255, 255)
+		If cur_anim <> Null
+			cur_frame = cur_anim.start_frame + ((Millisecs() - cur_anim.start_time) / cur_anim.frame_time Mod cur_anim.length)
+			cur_anim.Draw(pos.x, pos.y, cur_frame)
+			If cur_frame = cur_anim.length - 1
+				cur_anim = Null
+			End
+		End
 	End
 	
 	Method DrawActive(x:Float, y:Float)
@@ -82,6 +112,15 @@ Class Unit
 				height += 50
 			End
 		End
+	End
+	
+	Method DrawView(x:Float, y:Float)
+		SetColor(0, 0, 255)
+		DrawLine(x, y, x + 120, y)
+		SetColor(255, 255, 255)
+		DrawImage(unit_stats.img, x + 2, y + 2, 0.0, 1.0, 1.0)
+		DrawText(name + " " + unit_stats.type, x, y + 50)
+		DrawText("HP: " + unit_stats.health + "/" + unit_stats.max_health, x, y + 60)
 	End
 	
 	Method Move(pos:Position)
@@ -126,6 +165,7 @@ Class Unit
 	
 	Method Damaged:Int(damage:Int)
 		unit_stats.health = unit_stats.health - damage
+		SetAnimation("damaged")
 		Return unit_stats.health
 	End
 	
@@ -288,4 +328,30 @@ Class Tile
 		End
 		Return False
 	End
+End
+
+Class Animation
+	Field name:String
+	Field start_frame:Int
+	Field length:Int
+	Field fps:Int
+	Field img:Image
+	
+	Field start_time:Int
+	Field frame_time:Int
+	
+	Method New(name:String, img:Image, start_frame:Int, length:Int, fps:Int)
+		Self.name = name
+		Self.img = img
+		Self.start_frame = start_frame
+		Self.length = length
+		Self.fps = fps
+		
+		Self.frame_time = 1000 / fps
+	End
+	
+	Method Draw(x, y, frame)
+		DrawImage(img, x, y, frame)
+	End
+	
 End

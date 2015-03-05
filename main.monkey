@@ -24,6 +24,7 @@ Class RepelBoarders Extends App
 	Field player_army:List<Unit> = New List<Unit>()
 	Field opponent_army:List<Unit> = New List<Unit>()
 	Field active_unit:Unit
+	Field view_unit:Unit
 	Field moves:List<Position> = New List<Position>()
 	Field attacks:List<Position> = New List<Position>()
 	' AI variables
@@ -48,6 +49,9 @@ Class RepelBoarders Extends App
 	Field hotseat_button:Tile
 	Field rumai_button_img:Image
 	Field rumai_button:Tile
+	
+	' Attack animation image
+	Field attack_animation_img:Image
 	
 	Field attack_tiles:List<Tile> = New List<Tile>()
 	Field move_tiles:List<Tile> = New List<Tile>()
@@ -80,6 +84,7 @@ Class RepelBoarders Extends App
 		
 		finish_flags = LoadImage("images/FINISH_FLAGS.png")
 		
+		attack_animation_img = LoadImage("animations/ATTACK_ANIMATION.png")
 		attack_img = LoadImage("images/ATTACK_TILE.png")
 		move_img = LoadImage("images/MOVE_TILE.png")
 		can_select_img = LoadImage("images/CAN_SELECT.png")
@@ -110,18 +115,25 @@ Class RepelBoarders Extends App
 		Local sabre_img:Image = LoadImage("images/SABRE.png")
 		Local pistol_img:Image = LoadImage("images/PISTOL.png")
 		Local musket_img:Image = LoadImage("images/MUSKET.png")
+		Local damage_img:Image = LoadImage("animations/ATTACK_ANIMATION.png", 3)
+		Local damage_anim:Animation = New Animation("damaged", damage_img, 0, 3, 5)
+		
 		
 		For Local m:Int = 2 Until 7
 			If (m Mod 2 = 0)
-				Local p_unit:Unit = New Unit(m, pirate_names[m], m * TILE_W, MAP_H * TILE_H - 48, New Stats("Pirate", 6, 5, 1, 3, pirate_img))
-				Local o_unit:Unit = New Unit(m, hms_names[m], m * TILE_W, 0, New Stats("Sailor", 8, 2, 1, 3, sailor_img))
+				Local p_unit:Unit = New Unit(m, pirate_names[m], m * TILE_W, MAP_H * TILE_H - 48, 
+											 New Stats("Pirate", 6, 5, 1, 3, pirate_img), damage_anim)
+				Local o_unit:Unit = New Unit(m, hms_names[m], m * TILE_W, 0, 
+											 New Stats("Sailor", 8, 2, 1, 3, sailor_img), damage_anim)
 				p_unit.armament.AddLast(New Weapon("Sabre", "Sword", sabre_img, 5, 1, 4, 0, 1))
 				o_unit.armament.AddLast(New Weapon("Sabre", "Sword", sabre_img, 5, 1, 4, 0, 1))
 				player_army.AddLast(p_unit)
 				opponent_army.AddLast(o_unit)
 			Else
-				Local p_unit:Unit = New Unit(m, pirate_names[m], m * TILE_W, MAP_H * TILE_H - 48, New Stats("Bucaneer", 10, 4, 2, 2, bucaneer_img))
-				Local o_unit:Unit = New Unit(m, hms_names[m], m * TILE_W, 0, New Stats("Marine", 10, 3, 3, 2, marine_img))
+				Local p_unit:Unit = New Unit(m, pirate_names[m], m * TILE_W, MAP_H * TILE_H - 48, 
+											 New Stats("Bucaneer", 10, 4, 2, 2, bucaneer_img), damage_anim)
+				Local o_unit:Unit = New Unit(m, hms_names[m], m * TILE_W, 0, 
+											 New Stats("Marine", 10, 3, 3, 2, marine_img), damage_anim)
 				p_unit.armament.AddLast(New Weapon("Sabre", "Sword", sabre_img, 5, 1, 4, 0, 1))
 				p_unit.armament.AddLast(New Weapon("Pistol", "Pistol", pistol_img, 5, 1, 2, 0, 2))
 				o_unit.armament.AddLast(New Weapon("Musket", "Musket", musket_img, 7, 2, 5, 1, 3))
@@ -173,29 +185,34 @@ Class RepelBoarders Extends App
 					If (rumai_button.Clicked(TouchX(0), TouchY(0)))
 						ai_name = "Too Much Rum Tom"
 						game_state = STATE_INSTRUCTIONS
+						last_click = Millisecs()
 					End
 				End
 			Case STATE_INSTRUCTIONS
-				If (TouchDown(0) And (Millisecs() - last_click > 500))
+				If (TouchDown(0) And (Millisecs() - last_click > 750))
 					game_state = STATE_UNIT_SELECT
 				End
 			Case STATE_UNIT_SELECT
 				If (use_ai = 1 And player_turn = 1) Or TouchDown(0)
 					ChooseUnit(current_army)
+					ViewUnit(enemy_army)
 				End
 			Case STATE_MOVING
 				If ((use_ai = 1 And player_turn = 1) Or TouchDown(0))
 					ChooseMove(current_army)
+					ViewUnit(enemy_army)
 				Else If (moves.Count() = 0)
 					game_state = STATE_WEAPONS
 				End
 			Case STATE_WEAPONS
 				If ((use_ai = 1 And player_turn = 1) Or TouchDown(0))
 					ChooseWeapon(enemy_army)
+					ViewUnit(enemy_army)
 				End
 			Case STATE_ATTACKING
 				If ((use_ai = 1 And player_turn = 1) Or TouchDown(0))
 					ChooseAttack(enemy_army)
+					ViewUnit(enemy_army)
 				Else If (attacks.Count() = 0) 
 					game_state = STATE_UNIT_SELECT
 				End
@@ -257,6 +274,7 @@ Class RepelBoarders Extends App
 			Case STATE_MOVING
 				DrawUnits()
 				active_unit.DrawActive(490, 50)
+				view_unit.DrawView(490, 250)
 				DrawImage(can_select_img, active_unit.pos.x, active_unit.pos.y)
 				For Local move:Tile = Eachin move_tiles
 					move.Draw()
@@ -264,6 +282,7 @@ Class RepelBoarders Extends App
 			Case STATE_WEAPONS
 				DrawUnits()
 				active_unit.DrawActive(490, 50)
+				view_unit.DrawView(490, 250)
 				DrawImage(can_select_img, active_unit.pos.x, active_unit.pos.y)
 				For Local weap:Weapon = Eachin active_unit.armament
 					DrawImage(can_select_img, weap.use_tile.pos.x, weap.use_tile.pos.y)
@@ -271,6 +290,7 @@ Class RepelBoarders Extends App
 			Case STATE_ATTACKING
 				DrawUnits()
 				active_unit.DrawActive(490, 50)
+				view_unit.DrawView(490, 250)
 				DrawImage(can_select_img, active_unit.pos.x, active_unit.pos.y)
 				For Local attack:Tile = Eachin attack_tiles
 					attack.Draw()
@@ -402,6 +422,15 @@ Class RepelBoarders Extends App
 					End
 					game_state = STATE_ATTACKING
 				End
+			End
+		End
+	End
+	
+	Method ViewUnit(enemy_army:List<Unit>)
+		view_unit = active_unit
+		For Local enemy:Unit = Eachin enemy_army
+			If enemy.Clicked(TouchX(0), TouchY(0))
+				view_unit = enemy
 			End
 		End
 	End
